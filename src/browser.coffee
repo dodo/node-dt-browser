@@ -3,7 +3,6 @@
   cancelable_and_retrivable_callbacks,
   defineJQueryAPI, $fyBuilder,
   createSpaceholder, removed } = require './util'
-defaultfn = require './fn'
 { isArray } = Array
 
 EVENTS = [
@@ -13,14 +12,12 @@ EVENTS = [
     'remove', 'replace'
 ]
 
-# TODO listen on data and use innerHTML to create all dom elems at once
-#       http://blog.stevenlevithan.com/archives/faster-than-innerhtml
-
-# TODO listen for dom events to know when a dom manipulation is ready
-# TODO mit canvas tag kommt man direkt auf die browser render ticks.
+defaultfn = {}
+EVENTS.forEach (e) ->
+    defaultfn[e] = -> throw new Error "no specific fn for #{e} defined" # dummy
 
 
-class JQueryAdapter
+class BrowserAdapter
     constructor: (@template, opts = {}) ->
         @builder = @template.xml ? @template
         # defaults
@@ -179,7 +176,6 @@ class JQueryAdapter
             @fn.text(el, text)
 
     onraw: (el, html) ->
-#         if el_jquer
         el._jquery_manip ?= cancelable_and_retrivable_callbacks(yes)
         @animation.push el._jquery_manip =>
             @fn.raw(el, html)
@@ -210,29 +206,15 @@ class JQueryAdapter
             delete el._jquery
 
     onend: () ->
-#         @builder._jquery.data('dt-jquery', @template.xml)
         @template.jquery = @template._jquery = @builder._jquery
         defineJQueryAPI(@template)
-#         @template.jquery.data('dt-jquery', tpl)
 
-
-
-jqueryify = (opts, tpl) ->
-    [tpl, opts] = [opts, null] unless tpl?
-    new JQueryAdapter(tpl, opts)
-    return tpl
 
 # exports
 
-jqueryify.fn = defaultfn
-jqueryify.Adapter = JQueryAdapter
-module.exports = jqueryify
 
-# browser support
+module.exports = {
+    Adapter:BrowserAdapter
+    fn:defaultfn
+}
 
-( ->
-    if @dynamictemplate?
-        @dynamictemplate.jqueryify = jqueryify
-    else
-        @dynamictemplate = {jqueryify}
-).call window if process.title is 'browser'
