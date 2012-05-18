@@ -59,9 +59,8 @@ class BrowserAdapter
         return this
 
     listen: () ->
-        for event in EVENTS
-            if (listener = this["on#{event}"])?
-                @template.on(event, listener.bind(this))
+        for event in EVENTS when (listener = this["on#{event}"])?
+            @template.on(event, listener.bind(this))
         return this
 
     make: -> # create a dom object
