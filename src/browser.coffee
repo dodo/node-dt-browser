@@ -105,6 +105,12 @@ class BrowserAdapter
     make: -> # create a dom object
         throw new Error "Adapter::make not defined."
 
+    createPlaceholder: -> # create a dom object
+        throw new Error "Adapter::createPlaceholder not defined."
+
+    removePlaceholder: -> # create a dom object
+        throw new Error "Adapter::removePlaceholder not defined."
+
     # flow control : eventlisteners
 
     onadd: (parent, el) ->
@@ -178,9 +184,15 @@ class BrowserAdapter
     # ready callbacks
 
     insert_callback: (el) ->
+        if el is el.builder and el.isempty
+            el._browser.wrapped = yes
+            @createPlaceholder(el)
         @fn.add(el.parent, el)
+        if el.parent._browser.wrapped
+            el.parent._browser.wrapped = no
+            @removePlaceholder(el.parent)
         el._browser.ready?(el)
-        el._browser.ready = yes
+        el._browser.ready  = yes
         el._browser.insert = yes
 
     parent_done_callback: (el) ->
@@ -197,6 +209,9 @@ class BrowserAdapter
         el._browser.parent_done = yes
 
     replace_callback: (oldtag, newtag) ->
+        if newtag is newtag.builder and newtag.isempty
+            newtag._browser.wrapped = yes
+            @createPlaceholder(newtag)
         @fn.replace(oldtag, newtag)
         newtag._browser.replace = null
 
