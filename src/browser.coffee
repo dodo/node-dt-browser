@@ -197,6 +197,7 @@ class BrowserAdapter
                 el._browser.insert.call?()
         else
             @animation.push(el._browser.insert.call)
+        el._browser.parent_done = yes
 
     replace_callback: (oldtag, newtag) ->
         @fn.replace(oldtag, newtag)
