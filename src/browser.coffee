@@ -1,7 +1,6 @@
 { Animation } = require 'animation'
 { Callback, CancelableCallbacks, DeferredCallbacks,
   cancelable_and_retrivable_callbacks,
-  deferred_callbacks,
   removed } = require './util'
 { isArray } = Array
 
@@ -18,6 +17,8 @@ defaultfn = {}
 EVENTS.forEach (e) ->
     defaultfn[e] = -> throw new Error "no specific fn for #{e} defined" # dummy
 
+prepare_deferred_done = (el) ->
+    (el._browser ?= new BrowserState).done ?= new DeferredCallbacks
 
 prepare_cancelable_manip = (el, canceled) ->
     (el._browser ?= new BrowserState).manip ?=
@@ -32,7 +33,7 @@ class BrowserState
         @parent_done ?= new Callback
         @insert      ?= new Callback
         @manip ?= cancelable_and_retrivable_callbacks()
-        @done  ?= deferred_callbacks()
+        @done        ?= new DeferredCallbacks
         @manip.reset()
         this
 
@@ -82,8 +83,7 @@ class BrowserAdapter
         do @listen
         # prefill builder with state
         @make(@builder) # create a dom object
-        (@builder._browser ?= new BrowserState).done = deferred_callbacks()
-        do @builder._browser.done.callback() # builder is allways done
+        do prepare_deferred_done(@builder).callback() # builder is allways done
         # register ready handler
         @template.register 'ready', (tag, next) ->
             tag._browser ?= new BrowserState
@@ -114,7 +114,6 @@ class BrowserAdapter
         @make(el) # create a dom object
         that = this
         (el._browser ?= new BrowserState).initialize()
-        (parent._browser ?= new BrowserState).done ?= deferred_callbacks()
         while (cb = el._browser.manip.callbacks.shift())?
             @animation.push(cb)
 
@@ -130,7 +129,7 @@ class BrowserAdapter
         el._browser.parent_done.replace?(el).callback ?= ->
             return if removed this
             that.parent_done_callback(this)
-        parent._browser.done.call(el._browser.parent_done.call)
+        prepare_deferred_done(parent).call(el._browser.parent_done.call)
 
     onreplace: (oldtag, newtag) ->
         return if removed(oldtag) or removed(newtag)
