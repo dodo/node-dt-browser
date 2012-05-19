@@ -1,45 +1,67 @@
 
-# multiple changes of this context possible
-singlton_callback = (that, callback) ->
-    req = -> callback?.apply(that, arguments)
-    req.replace = (replacement) -> that = replacement
-    return req
+# multiple changes of `this` context possible
+class Callback
+    constructor: () ->
+        @callback = null
+        @that = null
+    use: (@callback) -> this
+    replace: (@that) -> this
+    call: =>
+        @callback?.apply(@that, arguments) if @that?
 
-deferred_callbacks = () ->
-    done = no
-    callbacks = []
-    res = (cb) ->
-        return cb?() if done
-        callbacks.push(cb)
-    allowed = null
-    res.callback = ->
-        return (->) if done
-        callback = ->
-            if callback is allowed
-                while (cb = callbacks.shift())?
+
+class CancelableCallbacks
+    constructor: (@canceled = no) ->
+        @callbacks = []
+    cancel: -> @canceled = yes
+    reset:  -> @canceled = no
+    # generates callback
+    call: (callback) =>
+        return =>
+            if @canceled
+                @callbacks.push callback
+            else
+                callback?(arguments...)
+
+
+class DeferredCallbacks
+    constructor: ->
+        @reset()
+
+    reset: () ->
+        @callbacks = []
+        @allowed   = null
+        @done      = no
+
+    complete: () ->
+        @callbacks = null
+        @allowed   = null
+        @done      = yes
+
+    # gnerates a callback
+    callback: () ->
+        return (->) if @done
+        callback = =>
+            if callback is @allowed
+                while (cb = @callbacks.shift())?
                     cb?(arguments...)
-                callbacks = null
-                allowed = null
-                done = yes
-        allowed = callback
+                @complete()
+        @allowed = callback
         return callback
-    res.reset = ->
-        allowed = null
-        callbacks = []
-        done = no
-    return res
+
+    call: (callback) =>
+        return callback?() if @done
+        @callbacks.push callback
+
+
+singlton_callback = (that, callback) ->
+    new Callback().replace(that).use(callback)
 
 cancelable_and_retrivable_callbacks = (canceled = no) ->
-    res = (cb) ->
-        return ->
-            if canceled
-                res.callbacks.push(cb)
-            else
-                cb?(arguments...)
-    res.cancel = -> canceled = yes
-    res.reset = -> canceled = no
-    res.callbacks = []
-    return res
+    new CancelableCallbacks(canceled)
+
+deferred_callbacks = () ->
+    new DeferredCallbacks()
 
 
 removed = (el) ->
@@ -49,6 +71,9 @@ removed = (el) ->
 # exports
 
 module.exports = {
+    Callback,
+    CancelableCallbacks,
+    DeferredCallbacks,
     singlton_callback,
     deferred_callbacks,
     cancelable_and_retrivable_callbacks,

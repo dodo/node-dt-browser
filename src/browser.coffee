@@ -129,7 +129,7 @@ class BrowserAdapter
             return if removed this
             that.parent_done_callback(this)
         el._browser.parent_done.replace(el)
-        parent._browser.done(el._browser.parent_done)
+        parent._browser.done.call(el._browser.parent_done.call)
 
     onreplace: (oldtag, newtag) ->
         return if removed(oldtag) or removed(newtag)
@@ -154,18 +154,18 @@ class BrowserAdapter
             newtag._browser.replace.replace(newtag)
             oldtag._browser?.replace = null
             unless oldreplacerequest
-                @animation.push(newtag._browser.replace)
+                @animation.push(newtag._browser.replace.call)
 
     ontext: (el, text) ->
-        @animation.push prepare_cancelable_manip(el, yes) =>
+        @animation.push prepare_cancelable_manip(el, yes).call =>
             @fn.text(el, text)
 
     onraw: (el, html) ->
-        @animation.push prepare_cancelable_manip(el, yes) =>
+        @animation.push prepare_cancelable_manip(el, yes).call =>
             @fn.raw(el, html)
 
     onattr: (el, key, value) ->
-        @animation.push prepare_cancelable_manip(el, yes) =>
+        @animation.push prepare_cancelable_manip(el, yes).call =>
             @fn.attr(el, key, value)
 
     onshow: (el) ->
@@ -193,11 +193,11 @@ class BrowserAdapter
                        (el.parent.parent is el.parent.parent?.builder and # FIXME recursive?
                         el.parent.parent?._browser?.insert is true))
             if bool and el.parent._browser?.insert is true
-                @animation.push(el._browser.insert)
+                @animation.push(el._browser.insert.call)
             else
-                el._browser.insert?()
+                el._browser.insert.call?()
         else
-            @animation.push(el._browser.insert)
+            @animation.push(el._browser.insert.call)
 
     replace_callback: (oldtag, newtag) ->
         @fn.replace(oldtag, newtag)
