@@ -54,9 +54,6 @@ class DeferredCallbacks
         @callbacks.push callback
 
 
-singlton_callback = (that, callback) ->
-    new Callback().replace(that).use(callback)
-
 cancelable_and_retrivable_callbacks = (canceled = no) ->
     new CancelableCallbacks(canceled)
 
@@ -74,7 +71,6 @@ module.exports = {
     Callback,
     CancelableCallbacks,
     DeferredCallbacks,
-    singlton_callback,
     deferred_callbacks,
     cancelable_and_retrivable_callbacks,
     removed,

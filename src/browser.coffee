@@ -1,6 +1,7 @@
 { Animation } = require 'animation'
-{ singlton_callback, deferred_callbacks,
+{ Callback, CancelableCallbacks, DeferredCallbacks,
   cancelable_and_retrivable_callbacks,
+  deferred_callbacks,
   removed } = require './util'
 { isArray } = Array
 
@@ -28,6 +29,9 @@ prepare_cancelable_manip = (el, canceled) ->
 #   - state objects from the requestAnimationFrame event loop
 class BrowserState
     initialize: (prev) ->
+        @parent_done ?= new Callback
+        @replace     ?= new Callback
+        @insert      ?= new Callback
         @manip ?= cancelable_and_retrivable_callbacks()
         @done  ?= deferred_callbacks()
         @manip.reset()
@@ -120,15 +124,13 @@ class BrowserAdapter
         if el is el.builder then ecb() else el.ready(ecb)
         if parent is parent.builder then pcb() else parent.ready(pcb)
 
-        el._browser.insert ?= singlton_callback el, ->
+        el._browser.insert.replace?(el).callback ?= ->
             return if removed this
             that.insert_callback(this)
-        el._browser.insert.replace?(el)
 
-        el._browser.parent_done ?= singlton_callback el, ->
+        el._browser.parent_done.replace?(el).callback ?= ->
             return if removed this
             that.parent_done_callback(this)
-        el._browser.parent_done.replace(el)
         parent._browser.done.call(el._browser.parent_done.call)
 
     onreplace: (oldtag, newtag) ->
@@ -146,13 +148,10 @@ class BrowserAdapter
 
         if newtag._browser.insert is true
             that = this
-            newtag._browser.replace ?= oldtag._browser?.replace
-            oldreplacerequest = newtag._browser.replace?
-            newtag._browser.replace ?= singlton_callback newtag, ->
+            oldreplacerequest = newtag._browser.replace.callback?
+            newtag._browser.replace.replace(newtag).callback ?= ->
                 return if removed this
                 that.replace_callback(oldtag, this)
-            newtag._browser.replace.replace(newtag)
-            oldtag._browser?.replace = null
             unless oldreplacerequest
                 @animation.push(newtag._browser.replace.call)
 
