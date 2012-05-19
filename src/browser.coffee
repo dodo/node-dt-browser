@@ -1,6 +1,5 @@
 { Animation } = require 'animation'
 { Callback, CancelableCallbacks, DeferredCallbacks,
-  cancelable_and_retrivable_callbacks,
   removed } = require './util'
 { isArray } = Array
 
@@ -21,8 +20,7 @@ prepare_deferred_done = (el) ->
     (el._browser ?= new BrowserState).done ?= new DeferredCallbacks
 
 prepare_cancelable_manip = (el, canceled) ->
-    (el._browser ?= new BrowserState).manip ?=
-        cancelable_and_retrivable_callbacks(canceled)
+    (el._browser ?= new BrowserState).manip ?= new CancelableCallbacks(canceled)
 
 ##
 # this contains the tag specific browser state from the user/developer event loop,
@@ -32,7 +30,7 @@ class BrowserState
     initialize: (prev) ->
         @parent_done ?= new Callback
         @insert      ?= new Callback
-        @manip ?= cancelable_and_retrivable_callbacks()
+        @manip       ?= new CancelableCallbacks
         @done        ?= new DeferredCallbacks
         @manip.reset()
         this

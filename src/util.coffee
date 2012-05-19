@@ -54,10 +54,6 @@ class DeferredCallbacks
         @callbacks.push callback
 
 
-cancelable_and_retrivable_callbacks = (canceled = no) ->
-    new CancelableCallbacks(canceled)
-
-
 removed = (el) ->
     el.closed is "removed"
 
@@ -68,6 +64,5 @@ module.exports = {
     Callback,
     CancelableCallbacks,
     DeferredCallbacks,
-    cancelable_and_retrivable_callbacks,
     removed,
 }
