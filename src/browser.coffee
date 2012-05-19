@@ -30,7 +30,6 @@ prepare_cancelable_manip = (el, canceled) ->
 class BrowserState
     initialize: (prev) ->
         @parent_done ?= new Callback
-        @replace     ?= new Callback
         @insert      ?= new Callback
         @manip ?= cancelable_and_retrivable_callbacks()
         @done  ?= deferred_callbacks()
@@ -148,7 +147,8 @@ class BrowserAdapter
 
         if newtag._browser.insert is true
             that = this
-            oldreplacerequest = newtag._browser.replace.callback?
+            oldreplacerequest = newtag._browser.replace?.callback?
+            newtag._browser.replace ?= new Callback
             newtag._browser.replace.replace(newtag).callback ?= ->
                 return if removed this
                 that.replace_callback(oldtag, this)
@@ -200,6 +200,7 @@ class BrowserAdapter
 
     replace_callback: (oldtag, newtag) ->
         @fn.replace(oldtag, newtag)
+        newtag._browser.replace = null
 
 # exports
 
