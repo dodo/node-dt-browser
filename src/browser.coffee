@@ -18,11 +18,16 @@ EVENTS.forEach (e) ->
     defaultfn[e] = -> throw new Error "no specific fn for #{e} defined" # dummy
 
 
+##
+# this contains the tag specific browser state from the user/developer event loop,
+#   which includes references to
+#   - state objects from the requestAnimationFrame event loop
 class BrowserState
     initialize: (prev) ->
         @manip ?= cancelable_and_retrivable_callbacks()
         @done  ?= deferred_callbacks()
         @manip.reset()
+        this
 
     mergeInto: (state) ->
         for key in SHARED
@@ -40,7 +45,11 @@ class BrowserState
             delete manip
         this
 
-
+##
+# the main purpose of this is to sync two event loops:
+#   the event loop from which the template gets updated
+#                   with
+#   the requestAnimationFrame event loop
 class BrowserAdapter
     constructor: (@template, opts = {}) ->
         @builder = @template.xml ? @template
