@@ -18,6 +18,10 @@ EVENTS.forEach (e) ->
     defaultfn[e] = -> throw new Error "no specific fn for #{e} defined" # dummy
 
 
+prepare_cancelable_manip = (el, canceled) ->
+    (el._browser ?= new BrowserState).manip ?=
+        cancelable_and_retrivable_callbacks(canceled)
+
 ##
 # this contains the tag specific browser state from the user/developer event loop,
 #   which includes references to
@@ -107,7 +111,7 @@ class BrowserAdapter
         @make(el) # create a dom object
         that = this
         (el._browser ?= new BrowserState).initialize()
-        parent._browser_done ?= deferred_callbacks()
+        (parent._browser ?= new BrowserState).done ?= deferred_callbacks()
         while (cb = el._browser.manip.callbacks.shift())?
             @animation.push(cb)
 
@@ -153,21 +157,15 @@ class BrowserAdapter
                 @animation.push(newtag._browser.replace)
 
     ontext: (el, text) ->
-        (el._browser ?= new BrowserState).manip ?=
-            cancelable_and_retrivable_callbacks(yes)
-        @animation.push el._browser.manip =>
+        @animation.push prepare_cancelable_manip(el, yes) =>
             @fn.text(el, text)
 
     onraw: (el, html) ->
-        (el._browser ?= new BrowserState).manip ?=
-            cancelable_and_retrivable_callbacks(yes)
-        @animation.push el._browser.manip =>
+        @animation.push prepare_cancelable_manip(el, yes) =>
             @fn.raw(el, html)
 
     onattr: (el, key, value) ->
-        (el._browser ?= new BrowserState).manip ?=
-            cancelable_and_retrivable_callbacks(yes)
-        @animation.push el._browser.manip =>
+        @animation.push prepare_cancelable_manip(el, yes) =>
             @fn.attr(el, key, value)
 
     onshow: (el) ->
