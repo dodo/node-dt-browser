@@ -4,6 +4,8 @@
   removed } = require './util'
 { isArray } = Array
 
+SHARED = ['parent_done', 'insert', 'replace', 'done']
+
 EVENTS = [
     'add', 'end'
     'show', 'hide'
@@ -14,6 +16,29 @@ EVENTS = [
 defaultfn = {}
 EVENTS.forEach (e) ->
     defaultfn[e] = -> throw new Error "no specific fn for #{e} defined" # dummy
+
+
+class BrowserState
+    initialize: (prev) ->
+        @manip ?= cancelable_and_retrivable_callbacks()
+        @done  ?= deferred_callbacks()
+        @manip.reset()
+
+    mergeInto: (state) ->
+        for key in SHARED
+            state[key] ?= this[key]
+            this[key] = null
+        state
+
+    destroy: (opts) ->
+        @manip?.cancel()
+        @done?.reset()
+        if opts.soft
+            this[key] = null for key in SHARED
+        else
+            delete this[key] for key in SHARED
+            delete manip
+        this
 
 
 class BrowserAdapter
@@ -41,17 +66,17 @@ class BrowserAdapter
         do @listen
         # prefill builder with state
         @make(@builder) # create a dom object
-        @builder._browser_done = deferred_callbacks()
-        do @builder._browser_done.callback() # builder is allways done
+        (@builder._browser ?= new BrowserState).done = deferred_callbacks()
+        do @builder._browser.done.callback() # builder is allways done
         # register ready handler
         @template.register 'ready', (tag, next) ->
+            tag._browser ?= new BrowserState
             # when tag is already in the dom its fine,
             #  else wait until it is inserted into dom
-            if tag._browser_ready is yes
+            if tag._browser.ready is yes
                 next(tag)
             else
-                tag._browser_ready = ->
-                    next(tag)
+                tag._browser.ready = next
         return this
 
     use: (plugin) ->
@@ -72,71 +97,68 @@ class BrowserAdapter
         return if removed el
         @make(el) # create a dom object
         that = this
-        el._browser_manip    ?= cancelable_and_retrivable_callbacks()
-        el._browser_done     ?= deferred_callbacks()
+        (el._browser ?= new BrowserState).initialize()
         parent._browser_done ?= deferred_callbacks()
-        el._browser_manip.reset()
-        while (cb = el._browser_manip.callbacks.shift())?
+        while (cb = el._browser.manip.callbacks.shift())?
             @animation.push(cb)
 
-        ecb = el._browser_done.callback()
-        pcb = parent._browser_done.callback()
+        ecb = el._browser.done.callback()
+        pcb = parent._browser.done.callback()
         if el is el.builder then ecb() else el.ready(ecb)
         if parent is parent.builder then pcb() else parent.ready(pcb)
 
-        el._browser_insert ?= singlton_callback el, ->
+        el._browser.insert ?= singlton_callback el, ->
             return if removed this
             that.insert_callback(this)
-        el._browser_insert.replace?(el)
+        el._browser.insert.replace?(el)
 
-        el._browser_parent_done ?= singlton_callback el, ->
+        el._browser.parent_done ?= singlton_callback el, ->
             return if removed this
             that.parent_done_callback(this)
-        el._browser_parent_done.replace(el)
-        parent._browser_done(el._browser_parent_done)
+        el._browser.parent_done.replace(el)
+        parent._browser.done(el._browser.parent_done)
 
     onreplace: (oldtag, newtag) ->
         return if removed(oldtag) or removed(newtag)
-        newtag._browser_parent_done ?= oldtag._browser_parent_done
-        newtag._browser_insert      ?= oldtag._browser_insert
-        newtag._browser_done        ?= oldtag._browser_done
-        oldtag._browser_parent_done  = null
-        oldtag._browser_insert       = null
-        oldtag._browser_done         = null
+        newtag._browser ?= new BrowserState
+        oldtag._browser?.mergeInto(newtag._browser)
 
         @onadd(oldtag.parent, newtag)
 
-        oldtag._browser_manip?.cancel?()
-        newtag._browser_manip.reset()
+        oldtag._browser?.destroy(soft:yes)
+        newtag._browser.manip.reset()
         # if manip left from last time run them
-        while (cb = newtag._browser_manip.callbacks.shift())?
+        while (cb = newtag._browser.manip.callbacks.shift())?
             @animation.push(cb)
 
-        if newtag._browser_insert is true
+        if newtag._browser.insert is true
             that = this
-            newtag._browser_replace ?= oldtag._browser_replace
-            oldreplacerequest = newtag._browser_replace?
-            newtag._browser_replace ?= singlton_callback newtag, ->
+            newtag._browser.replace ?= oldtag._browser?.replace
+            oldreplacerequest = newtag._browser.replace?
+            newtag._browser.replace ?= singlton_callback newtag, ->
                 return if removed this
                 that.replace_callback(oldtag, this)
-            newtag._browser_replace.replace?(newtag)
-            oldtag._browser_replace = null
+            newtag._browser.replace.replace(newtag)
+            oldtag._browser?.replace = null
             unless oldreplacerequest
-                @animation.push(newtag._browser_replace)
+                @animation.push(newtag._browser.replace)
 
     ontext: (el, text) ->
-        el._browser_manip ?= cancelable_and_retrivable_callbacks(yes)
-        @animation.push el._browser_manip =>
+        (el._browser ?= new BrowserState).manip ?=
+            cancelable_and_retrivable_callbacks(yes)
+        @animation.push el._browser.manip =>
             @fn.text(el, text)
 
     onraw: (el, html) ->
-        el._browser_manip ?= cancelable_and_retrivable_callbacks(yes)
-        @animation.push el._browser_manip =>
+        (el._browser ?= new BrowserState).manip ?=
+            cancelable_and_retrivable_callbacks(yes)
+        @animation.push el._browser.manip =>
             @fn.raw(el, html)
 
     onattr: (el, key, value) ->
-        el._browser_manip ?= cancelable_and_retrivable_callbacks(yes)
-        @animation.push el._browser_manip =>
+        (el._browser ?= new BrowserState).manip ?=
+            cancelable_and_retrivable_callbacks(yes)
+        @animation.push el._browser.manip =>
             @fn.attr(el, key, value)
 
     onshow: (el) ->
@@ -147,35 +169,28 @@ class BrowserAdapter
 
     onremove: (el, opts) ->
         @fn.remove(el, opts)
-        el._browser_parent_done?.replace(null)
-        el._browser_done?.reset()
-        el._browser_manip?.cancel()
-        delete el._browser_parent_done
-        delete el._browser_replace
-        delete el._browser_insert
-        unless opts.soft
-            delete el._browser_manip
-            delete el._browser_done
+        el._browser?.destroy(opts)
+        delete el._browser unless opts.soft
 
     # ready callbacks
 
     insert_callback: (el) ->
         @fn.add(el.parent, el)
-        el._browser_ready?()
-        el._browser_ready = yes
-        el._browser_insert = yes
+        el._browser.ready?(el)
+        el._browser.ready = yes
+        el._browser.insert = yes
 
     parent_done_callback: (el) ->
         if el.parent is el.parent.builder
             bool = (not el.parent.parent? or
                        (el.parent.parent is el.parent.parent?.builder and # FIXME recursive?
-                        el.parent.parent?._browser_insert is true))
-            if bool and el.parent._browser_insert is true
-                @animation.push(el._browser_insert)
+                        el.parent.parent?._browser?.insert is true))
+            if bool and el.parent._browser?.insert is true
+                @animation.push(el._browser.insert)
             else
-                el._browser_insert?()
+                el._browser.insert?()
         else
-            @animation.push(el._browser_insert)
+            @animation.push(el._browser.insert)
 
     replace_callback: (oldtag, newtag) ->
         @fn.replace(oldtag, newtag)
