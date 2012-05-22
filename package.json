@@ -1,6 +1,6 @@
 { "name": "dt-browser"
 , "description": "Δt browser render logic for adapters - async & dynamic templating engine"
-, "version": "0.0.2"
+, "version": "0.0.3"
 , "homepage": "https://github.com/dodo/node-dt-browser"
 , "author": "dodo (https://github.com/dodo)"
 , "repository": {"type": "git", "url": "git://github.com/dodo/node-dt-browser.git"}
