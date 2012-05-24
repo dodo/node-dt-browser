@@ -122,7 +122,7 @@ class BrowserAdapter
             @animation.push(cb)
 
         ecb = el._browser.done.callback()
-        pcb = parent._browser.done.callback()
+        pcb = prepare_deferred_done(parent).callback()
         if el is el.builder then ecb() else el.ready(ecb)
         if parent is parent.builder then pcb() else parent.ready(pcb)
 
@@ -133,7 +133,7 @@ class BrowserAdapter
         el._browser.parent_done.replace?(el).callback ?= ->
             return if removed this
             that.parent_done_callback(this)
-        prepare_deferred_done(parent).call(el._browser.parent_done.call)
+        parent._browser.done.call(el._browser.parent_done.call)
 
     onreplace: (oldtag, newtag) ->
         return if removed(oldtag) or removed(newtag)
