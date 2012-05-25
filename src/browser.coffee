@@ -42,6 +42,8 @@ class BrowserState
         state
 
     destroy: (opts) ->
+        @replace?.use?(null).replace(null)
+        @insert?.use?(null).replace(null)
         @manip?.cancel()
         @done?.reset()
         if opts.soft
