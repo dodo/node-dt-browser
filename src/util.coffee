@@ -43,7 +43,7 @@ class DeferredCallbacks
         return (->) if @done
         callback = =>
             if callback is @allowed
-                while (cb = @callbacks.shift())?
+                while (cb = @callbacks?.shift())?
                     cb?(arguments...)
                 @complete()
         @allowed = callback
