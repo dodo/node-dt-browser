@@ -32,6 +32,7 @@ class BrowserState
         @insert      ?= new Callback
         @manip       ?= new CancelableCallbacks
         @done        ?= new DeferredCallbacks
+        @initialized  = yes
         @manip.reset()
         this
 
@@ -42,13 +43,14 @@ class BrowserState
         state
 
     destroy: (opts) ->
-        @replace?.use?(null).replace(null)
-        @insert?.use?(null).replace(null)
+        @parent_done?.use?(null).replace(null)
         @manip?.cancel()
         @done?.reset()
         if opts.soft
             this[key] = null for key in SHARED
         else
+            @insert?.use?(null).replace(null)
+            @replace?.use?(null).replace(null)
             delete this[key] for key in SHARED
             delete manip
         this
@@ -123,8 +125,12 @@ class BrowserAdapter
         while (cb = el._browser.manip.callbacks.shift())?
             @animation.push(cb)
 
+        prepare_deferred_done(parent) # init parent browserState
+        if not el.parent._browser.initialized and parent.parent?
+            @onadd(parent.parent, parent)
+
         ecb = el._browser.done.callback()
-        pcb = prepare_deferred_done(parent).callback()
+        pcb = parent._browser.done.callback()
         if el is el.builder then ecb() else el.ready(ecb)
         if parent is parent.builder then pcb() else parent.ready(pcb)
 
@@ -145,7 +151,6 @@ class BrowserAdapter
         @onadd(oldtag.parent, newtag)
 
         oldtag._browser?.destroy(soft:yes)
-        newtag._browser.manip.reset()
         # if manip left from last time run them
         while (cb = newtag._browser.manip.callbacks.shift())?
             @animation.push(cb)
