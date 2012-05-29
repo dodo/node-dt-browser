@@ -55,7 +55,7 @@ class DeferredCallbacks
 
 
 removed = (el) ->
-    el.closed is "removed"
+    not el? or el.closed is "removed"
 
 
 # exports
