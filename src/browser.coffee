@@ -118,7 +118,7 @@ class BrowserAdapter
     # flow control : eventlisteners
 
     onadd: (parent, el) ->
-        return if removed el
+        return if removed(el) or removed(parent)
         @make(el) # create a dom object
         that = this
         (el._browser ?= new BrowserState).initialize()
@@ -135,11 +135,11 @@ class BrowserAdapter
         if parent is parent.builder then pcb() else parent.ready(pcb)
 
         el._browser.insert.replace?(el).callback ?= ->
-            return if removed this
+            return if removed(this) or removed(@parent)
             that.insert_callback(this)
 
         el._browser.parent_done.replace?(el).callback ?= ->
-            return if removed this
+            return if removed(this) or removed(@parent)
             that.parent_done_callback(this)
         parent._browser.done.call(el._browser.parent_done.call)
 
@@ -160,7 +160,7 @@ class BrowserAdapter
             oldreplacerequest = newtag._browser.replace?.callback?
             newtag._browser.replace ?= new Callback
             newtag._browser.replace.replace(newtag).callback ?= ->
-                return if removed this
+                return if removed(this) or removed(@parent)
                 that.replace_callback(oldtag, this)
             unless oldreplacerequest
                 @animation.push(newtag._browser.replace.call)
