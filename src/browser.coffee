@@ -80,6 +80,7 @@ class BrowserAdapter
         opts.use ?= []
         opts.use = [opts.use] unless isArray opts.use
         @use(plugin) for plugin in opts.use
+        @registerQuery(@query) if @query?
 
     initialize: () ->
         do @listen
@@ -114,6 +115,17 @@ class BrowserAdapter
 
     removePlaceholder: -> # create a dom object
         throw new Error "Adapter::removePlaceholder not defined."
+
+    registerQuery: (query) ->
+        old_query = @builder.query
+        @builder.query = (type, tag, key) ->
+            # use changes if they're not synced yet
+            if Object.keys(tag._changes ? {}).indexOf(type) is -1
+                query.call(this, type, tag, key, old_query)
+            else if type is 'attr'
+                tag._changes.attr[key]
+            else
+                tag._changes[type]
 
     # flow control : eventlisteners
 
@@ -166,7 +178,10 @@ class BrowserAdapter
                 @animation.push(newtag._browser.replace.call)
 
     ontext: (el, text) ->
+        el._changes ?= {}
+        el._changes.text = text
         @animation.push prepare_cancelable_manip(el, yes).call =>
+            delete el._changes.text
             @fn.text(el, text)
 
     onraw: (el, html) ->
@@ -174,7 +189,13 @@ class BrowserAdapter
             @fn.raw(el, html)
 
     onattr: (el, key, value) ->
+        el._changes ?= {}
+        el._changes.attr ?= {}
+        el._changes.attr[key]= value
         @animation.push prepare_cancelable_manip(el, yes).call =>
+            delete el._changes.attr[key]
+            unless Object.keys(el._changes.attr).length
+                delete el._changes.attr
             @fn.attr(el, key, value)
 
     onshow: (el) ->
