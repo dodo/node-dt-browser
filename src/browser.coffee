@@ -63,6 +63,8 @@ class BrowserState
 class BrowserAdapter
     constructor: (@template, opts = {}) ->
         @builder = @template.xml ? @template
+        @builder.adapters ?= {}
+        @builder.adapters['browser'] = this
         # defaults
         opts.timeoutexecution ?= '32ms'
         opts.execution        ?= '8ms' # half of 16ms (60 FPS), the other half is for the browser
