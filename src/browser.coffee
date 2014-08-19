@@ -183,7 +183,7 @@ class BrowserAdapter
         el._changes ?= {}
         el._changes.text = text
         @animation.push prepare_cancelable_manip(el, yes).call =>
-            delete el._changes.text
+            delete el._changes.text if el._changes?.text?
             @fn.text(el, text)
 
     onraw: (el, html) ->
@@ -195,9 +195,9 @@ class BrowserAdapter
         el._changes.attr ?= {}
         el._changes.attr[key]= value
         @animation.push prepare_cancelable_manip(el, yes).call =>
-            delete el._changes.attr[key]
+            delete el._changes.attr[key] if el._changes?[key]?
             unless Object.keys(el._changes.attr).length
-                delete el._changes.attr
+                delete el._changes.attr if el._changes?.attr?
             @fn.attr(el, key, value)
 
     onshow: (el) ->
